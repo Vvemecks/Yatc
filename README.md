@@ -38,3 +38,27 @@ Value *NumberExprAST::codegen() {
   return ConstantInt::get(*TheContext, APInt(32, Val, true));
 }
 ```
+另外，顶层还需要定义如下变量，用于代码生成，其详细含义可以参考 `LLVM` 官方教程
+```C++
+std::unique_ptr<LLVMContext> TheContext;
+std::unique_ptr<Module> TheModule;
+std::unique_ptr<IRBuilder<>> Builder;
+std::map<std::string, Value *> NamedValues;
+```
+主函数有四行，分别为初始化上述变量、语法分析、生成 `LLVM IR`、打印输出
+```C++
+InitializeModule();
+yyparse();
+auto FnIR = FnAST->codegen();
+FnIR->print(errs());
+```
+
+## 问题记录
+代码编译时需要加上配置选项 `llvm-config --cxxflags --ldflags --system-libs --libs core`，例如
+```shell
+clang++ -o toy tokens.cpp parser.cpp codegen.cpp main.cpp `llvm-config --cxxflags --ldflags --system-libs --libs core`
+```
+`bison` 中需要使用 `union` 定义 `YYSTYPE`，早期 `C++` 规定 `union` 中只允许基本类型，`C++ 11` 去除了该限定，但是如果包含的类型有非默认构造函数，例如 `std::string`、`std::unique_ptr` 等，该 `union` 的默认构造函数会被编译器删除，会导致对象构造失败，解决方法是使用指针
+
+## 参考
+[My First Language Frontend with LLVM Tutorial](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html)
